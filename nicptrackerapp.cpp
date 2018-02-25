@@ -280,10 +280,12 @@ void NICPTrackerApp::setStartingPose(const Eigen::Isometry3f startingPose){
     _globalT = startingPose;
 }
 
-double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& depthFilename) {
+double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& depthFilename, const std::string &rgbFileName) {
     // Generate new current cloud
     _tBegin = get_time();
     _rawDepth = imread(depthFilename, -1);
+    _rgbImage = imread(rgbFileName, -1);
+    cvtColor(_rgbImage, _rgbImage, CV_BGR2RGB);
     if(!_rawDepth.data) {
         std::cerr << "Error: impossible to read image file " << depthFilename << std::endl;
         exit(-1);
@@ -292,9 +294,12 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
         DepthImage_convert_16UC1_to_32FC1(_depth, _rawDepth, _depthScaling);
         DepthImage_scale(_scaledDepth, _depth, _imageScaling);
     }
-    else { DepthImage_convert_16UC1_to_32FC1(_scaledDepth, _rawDepth, _depthScaling); }
+    else {
+        DepthImage_convert_16UC1_to_32FC1(_scaledDepth, _rawDepth, _depthScaling);
+    }
     _scaledIndeces.create(_scaledDepth.rows, _scaledDepth.cols);
-    _converter.compute(*_currentCloud, _scaledDepth, Eigen::Isometry3f::Identity());
+//        _converter.compute(*_currentCloud, _scaledDepth, Eigen::Isometry3f::Identity());
+    _converter.compute(*_currentCloud, _scaledDepth, _rgbImage);
     _tEnd = get_time();
     _tInput = _tEnd - _tBegin;
 

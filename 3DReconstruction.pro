@@ -44,6 +44,6 @@ INCLUDEPATH += /usr/include/eigen3
 INCLUDEPATH += /home/thiago/Libraries/nicp/nicp
 INCLUDEPATH += /usr/include/QGLViewer
 LIBS += -lglut -lGLU
-LIBS += -L/usr/local/lib -lopencv_core -lopencv_highgui
+LIBS += -L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_imgproc
 LIBS += -L/home/thiago/Libraries/nicp/lib -lnicp -lnicp_viewer
 LIBS += -lQGLViewer

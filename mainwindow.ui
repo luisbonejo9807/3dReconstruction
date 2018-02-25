@@ -22,20 +22,7 @@
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
-     <widget class="NICPTrackerAppViewer" name="QGLwidget" native="true">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>19000</width>
-        <height>19000</height>
-       </size>
-      </property>
-     </widget>
+     <widget class="NICPTrackerAppViewer" name="viewer" native="true"/>
     </item>
    </layout>
   </widget>

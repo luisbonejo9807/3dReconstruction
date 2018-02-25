@@ -12,3 +12,16 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
+
+void MainWindow::initConfigs(std::string configFile)
+{    
+    tracker = new NICPTrackerApp(configFile, ui->viewer);
+}
+
+NICPTrackerAppViewer* MainWindow::getViewer(){
+    return ui->viewer;
+}
+
+NICPTrackerApp* MainWindow::getTracker(){
+    return tracker;
+}

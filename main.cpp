@@ -1,6 +1,12 @@
 #include "mainwindow.h"
+#include <iostream>
+#include <fstream>
+#include <sys/time.h>
+
 #include <QApplication>
 #include "nicptrackerappviewer.h"
+
+using namespace std;
 
 int main(int argc, char *argv[])
 {
@@ -47,8 +53,59 @@ int main(int argc, char *argv[])
     MainWindow mainWindow;
     mainWindow.setWindowTitle("3d reconstruction with depth cameras");
     mainWindow.showMaximized();
-    NICPTrackerAppViewer* viewer = new NICPTrackerAppViewer(mainWindow);
+    mainWindow.initConfigs(configurationFile);
 
+    //GUI LOOP
+    Eigen::Isometry3f globalT;
+    globalT.matrix().row(3) << 0.0f, 0.0f, 0.0f, 1.0f;
+    bool lastDepth = false;
+    int counter = 0;
+    double totTime = 0;
+    while(mainWindow.isVisible()) {
+        a.processEvents();
+        if(mainWindow.getViewer()->needRedraw()) { mainWindow.getViewer()->updateGL(); }
+        else {
+            usleep(10000);
+        }
+        while(is.good() && (mainWindow.getViewer()->spinOnce() || mainWindow.getViewer()->spin())) {
+            char buf[4096];
+            is.getline(buf, 4096);
+            istringstream iss(buf);
+            string timestamp1, depthFilename, timestamp2, rgbFilename;
+            if(!(iss >> timestamp1 >> depthFilename >> timestamp2 >> rgbFilename)) { continue; }
+            if(timestamp1[0] == '#') { continue; }
+            std::cout << "---------------------------------------------------------------------------- " << std::endl;
+            std::cout << "[INFO]: new frame " << depthFilename << std::endl;
+            double time = 0;
+            Eigen::Isometry3f groundtruthT = Eigen::Isometry3f::Identity();
+//            if(groundtruthFile != "") { groundtruthT = getGroundtruth(groundtruthFile, timestamp1); }
+//            if(counter == 0) { tracker->setStartingPose(groundtruthT); }
+//            if(enableViewer && groundtruthFile != "") { viewer->addGroundtruthPose(groundtruthT); }
+            Eigen::Isometry3f deltaT = Eigen::Isometry3f::Identity();
+            deltaT.matrix().row(3) << 0.0f, 0.0f, 0.0f, 1.0f;
+            time = mainWindow.getTracker()->spinOnce(deltaT, depthFilename, rgbFilename);
+            globalT = mainWindow.getTracker()->globalT();
+            std::cout << "[INFO]: delta   T " << t2v(deltaT).transpose() << std::endl;
+            std::cout << "[INFO]: global  T " << t2v(globalT).transpose() << std::endl;
+            std::cout << "[INFO]: ground  T " << t2v(groundtruthT).transpose() << std::endl;
+            std::cout << "[INFO]: computation time " << time << " ms" << std::endl;
+            Quaternionf globalRotation = Quaternionf(globalT.linear());
+            globalRotation.normalize();
+            os << timestamp1 << " "
+               << globalT.translation().x() << " "  << globalT.translation().y() << " " << globalT.translation().z() << " "
+               << globalRotation.x() << " " << globalRotation.y() << " " << globalRotation.z() << " " << globalRotation.w()
+               << std::endl;
+            totTime += time;
+            counter++;
+            a.processEvents();
+            if(mainWindow.getViewer()->needRedraw()) { mainWindow.getViewer()->updateGL(); }
+        }
+        if(!is.good() && !lastDepth) {
+            lastDepth = true;
+            std::cout << "Mean time frame: " << totTime / (double)counter << std::endl;
+            if(!enableViewer) { break; }
+        }
+    }
 
     return a.exec();
 }

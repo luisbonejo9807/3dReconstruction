@@ -164,7 +164,7 @@ public:
         if(!_drawableReferenceScene) {
             _drawableReferenceScene = new DrawablePoints(transform_,
                                                          new GLParameterPoints(2.0f, Eigen::Vector4f(1.0f, 0.5f, 0.0f, 0.75f)),
-                                                         &referenceScene_->points(), &referenceScene_->normals());
+                                                         &referenceScene_->points(), &referenceScene_->normals(), &referenceScene_->rgbs());
             addDrawable(_drawableReferenceScene);
         }
         else {
@@ -179,7 +179,7 @@ public:
         if(!_drawableCurrentCloud) {
             _drawableCurrentCloud = new DrawablePoints(transform_,
                                                        new GLParameterPoints(3.0f, Eigen::Vector4f(0.0f, 0.0f, 1.0f, 1.0f)),
-                                                       &currentCloud_->points(), &currentCloud_->normals());
+                                                       &currentCloud_->points(), &currentCloud_->normals(), &currentCloud_->rgbs());
             addDrawable(_drawableCurrentCloud);
         }
         else {

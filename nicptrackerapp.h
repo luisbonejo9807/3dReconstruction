@@ -9,6 +9,7 @@
 #include <Eigen/Geometry>
 
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include "nicp/bm_se3.h"
 #include "nicp/imageutils.h"
@@ -57,7 +58,8 @@ public:
 
     void setStartingPose(const Eigen::Isometry3f startingPose);
 
-    double spinOnce(Eigen::Isometry3f& deltaT, const std::string& depthFilename);
+    double spinOnce(Eigen::Isometry3f& deltaT, const std::string& depthFilename,
+                    const std::string &rgbFileName);
 
 protected:
     double _tBegin, _tEnd;
@@ -76,6 +78,7 @@ protected:
     Eigen::Isometry3f _deltaT, _globalT, _localT;
 
     RawDepthImage _rawDepth;
+    RGBImage _rgbImage;
     DepthImage _depth, _scaledDepth, _referenceScaledDepth;
     IndexImage _scaledIndeces, _referenceScaledIndeces;
     Cloud* _referenceScene;
