@@ -5,6 +5,7 @@
 #include "nicptrackerappviewer.h"
 #include "nicptrackerapp.h"
 #include <string>
+#include <QCloseEvent>
 
 namespace Ui {
 class MainWindow;
@@ -20,6 +21,7 @@ public:
     void initConfigs(std::string configFile);
     NICPTrackerAppViewer* getViewer();
     NICPTrackerApp* getTracker();
+    void closeEvent(QCloseEvent *ev);
 
 private:
     Ui::MainWindow *ui;

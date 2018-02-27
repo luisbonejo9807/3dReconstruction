@@ -282,10 +282,11 @@ void NICPTrackerApp::setStartingPose(const Eigen::Isometry3f startingPose){
 
 double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& depthFilename, const std::string &rgbFileName) {
     // Generate new current cloud
-    _tBegin = get_time();
+    _tBegin = get_time();    
     _rawDepth = imread(depthFilename, -1);
-    _rgbImage = imread(rgbFileName, -1);
+    _rgbImage = imread(rgbFileName, 1);
     cvtColor(_rgbImage, _rgbImage, CV_BGR2RGB);
+
     if(!_rawDepth.data) {
         std::cerr << "Error: impossible to read image file " << depthFilename << std::endl;
         exit(-1);
@@ -326,10 +327,10 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _globalT.linear() -= 0.5 * R * E;
 
     _converter.projector()->project(_referenceScaledIndeces, _referenceScaledDepth, _referenceScene->points());
-    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
-                  _referenceScaledDepth, _referenceScaledIndeces,
-                  _scaledDepth, _scaledIndeces,
-                  0.05f, false);
+//    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
+//                  _referenceScaledDepth, _referenceScaledIndeces,
+//                  _scaledDepth, _scaledIndeces,
+//                  0.05f, false);
     Eigen::AngleAxisf aa(_localT.linear());
     if(_localT.translation().norm() > _breakingDistance ||
             fabs(aa.angle()) > _breakingAngle ||

@@ -34,7 +34,9 @@ HEADERS += \
     standardcamera.h \
     gluwrapper.h \
     nicptrackerappviewer.h \
-    nicptrackerapp.h
+    nicptrackerapp.h \
+    filereading.h \
+    pinholepointcolorprojector.h
 
 FORMS += \
         mainwindow.ui

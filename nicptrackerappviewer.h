@@ -178,7 +178,7 @@ public:
     void updateCurrentCloud(Cloud* currentCloud_, Eigen::Isometry3f transform_) {
         if(!_drawableCurrentCloud) {
             _drawableCurrentCloud = new DrawablePoints(transform_,
-                                                       new GLParameterPoints(3.0f, Eigen::Vector4f(0.0f, 0.0f, 1.0f, 1.0f)),
+                                                       new GLParameterPoints(2.0f, Eigen::Vector4f(0.0f, 0.0f, 1.0f, 1.0f)),
                                                        &currentCloud_->points(), &currentCloud_->normals(), &currentCloud_->rgbs());
             addDrawable(_drawableCurrentCloud);
         }

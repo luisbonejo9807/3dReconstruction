@@ -25,3 +25,7 @@ NICPTrackerAppViewer* MainWindow::getViewer(){
 NICPTrackerApp* MainWindow::getTracker(){
     return tracker;
 }
+
+void MainWindow::closeEvent(QCloseEvent *ev){
+    ev->accept();
+}
