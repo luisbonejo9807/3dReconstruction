@@ -28,7 +28,7 @@ NICPTrackerApp::NICPTrackerApp(const std::string& configurationFile, NICPTracker
 
     _currentCloud = new Cloud();
     _referenceCloud = new Cloud();
-    _referenceScene = new Cloud();
+    _referenceScene = new CloudConfidence();
 
     init(configurationFile);
 }
@@ -186,6 +186,7 @@ void NICPTrackerApp::setInputParameters(map<string, std::vector<float> >& inputP
     if((it = inputParameters.find("normalThreshold")) != inputParameters.end()) _merger.setNormalThreshold(((*it).second)[0]);
     if((it = inputParameters.find("distanceThreshold")) != inputParameters.end()) _merger.setDistanceThreshold(((*it).second)[0]);
     _merger.setDepthImageConverter(&_converter);
+    _merger.setImageSize(424, 512);
     std::cout << "[INFO]: m  depth threshold " << _merger.maxPointDepth() << std::endl;
     std::cout << "[INFO]: m  normal threshold " << _merger.normalThreshold() << std::endl;
     std::cout << "[INFO]: m  distance threshold " << _merger.distanceThreshold() << std::endl;
@@ -286,7 +287,6 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _rawDepth = imread(depthFilename, -1);
     _rgbImage = imread(rgbFileName, 1);
     cvtColor(_rgbImage, _rgbImage, CV_BGR2RGB);
-
     if(!_rawDepth.data) {
         std::cerr << "Error: impossible to read image file " << depthFilename << std::endl;
         exit(-1);
@@ -332,27 +332,29 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
 //                  _scaledDepth, _scaledIndeces,
 //                  0.05f, false);
     Eigen::AngleAxisf aa(_localT.linear());
-    if(_localT.translation().norm() > _breakingDistance ||
-            fabs(aa.angle()) > _breakingAngle ||
-            (float)_inNum / (float)(_inNum + _outNum) < _breakingInlierRatio) {
-        _localT.setIdentity();
-        _referenceScene = new Cloud();
-        if(_viewer) { _viewer->resetReferenceScene(); }
-    }
+//    if(_localT.translation().norm() > _breakingDistance ||
+//            fabs(aa.angle()) > _breakingAngle ||
+//            (float)_inNum / (float)(_inNum + _outNum) < _breakingInlierRatio) {
+//        _localT.setIdentity();
+//        _referenceScene = new Cloud();
+//        if(_viewer) { _viewer->resetReferenceScene(); }
+//    }
     _referenceScene->add(*_currentCloud, _deltaT);
     _referenceScene->transformInPlace(_deltaT.inverse());
     _merger.merge(_referenceScene);
     _seq++;
     _tEnd = get_time();
     _tUpdate = _tEnd - _tBegin;
-    std::cout << "[INFO]: inlier ratio " << (float)_inNum / (float)(_inNum + _outNum) << std::endl;
+//    std::cout << "[INFO]: inlier ratio " << (float)_inNum / (float)(_inNum + _outNum) << std::endl;
 
-    if(_viewer) { _viewer->updateCurrentCloud(_currentCloud, _globalT * _deltaT.inverse()); }
+    if(_viewer) {
+        _viewer->updateCurrentCloud(_currentCloud, _globalT * _deltaT.inverse());
+    }
 
-    std::cout << "[INFO]: timings [input: " << _tInput << "] "
-              << "[align: " << _tAlign << "] "
-              << "[update: " << _tUpdate << "] "
-              << "[total: " << _tInput + _tAlign + _tUpdate << "]" << std::endl;
+//    std::cout << "[INFO]: timings [input: " << _tInput << "] "
+//              << "[align: " << _tAlign << "] "
+//              << "[update: " << _tUpdate << "] "
+//              << "[total: " << _tInput + _tAlign + _tUpdate << "]" << std::endl;
 
     return _tAlign + _tUpdate;
 }

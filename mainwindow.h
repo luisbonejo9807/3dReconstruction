@@ -23,6 +23,9 @@ public:
     NICPTrackerApp* getTracker();
     void closeEvent(QCloseEvent *ev);
 
+private slots:
+    void on_buttonSaveCloud_clicked();
+
 private:
     Ui::MainWindow *ui;
     NICPTrackerApp* tracker;

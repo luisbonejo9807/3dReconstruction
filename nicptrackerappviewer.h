@@ -3,6 +3,7 @@
 
 #include <nicp_viewer/nicp_qglviewer.h>
 #include <nicp_viewer/drawable_points.h>
+#include <nicp_viewer/drawable_normals.h>
 
 #include "nicp/cloud.h"
 
@@ -41,7 +42,9 @@ public:
             std::cout << "[INFO]: stop tracking" << std::endl;
             _spin = _spinOnce = false;
         }
-        else {}
+        else if((e->key() == Qt::Key_1)) {
+            _drawCurrentCloud = !_drawableCurrentCloud;
+        }        
     }
 
     virtual void init() {
@@ -163,31 +166,35 @@ public:
     void updateReferenceScene(Cloud* referenceScene_, Eigen::Isometry3f transform_) {
         if(!_drawableReferenceScene) {
             _drawableReferenceScene = new DrawablePoints(transform_,
-                                                         new GLParameterPoints(2.0f, Eigen::Vector4f(1.0f, 0.5f, 0.0f, 0.75f)),
-                                                         &referenceScene_->points(), &referenceScene_->normals(), &referenceScene_->rgbs());
-            addDrawable(_drawableReferenceScene);
+                                                         new GLParameterPoints(1.0f, Eigen::Vector4f(1.0f, 0.5f, 0.0f, 0.75f)),
+                                                         &referenceScene_->points(), &referenceScene_->normals(),&referenceScene_->rgbs());
+            addDrawable(_drawableReferenceScene);            
         }
         else {
             _drawableReferenceScene->setTransformation(transform_);
-            DrawablePoints* dp = dynamic_cast<DrawablePoints*>(_drawableReferenceScene);
-            if(dp) { dp->updatePointDrawList(); }
+            DrawablePoints* dp = dynamic_cast<DrawablePoints*>(_drawableReferenceScene);            
+            if(dp) {
+                dp->updatePointDrawList();            
+            }
         }
         _needRedraw = true;
     }
 
     void updateCurrentCloud(Cloud* currentCloud_, Eigen::Isometry3f transform_) {
-        if(!_drawableCurrentCloud) {
-            _drawableCurrentCloud = new DrawablePoints(transform_,
-                                                       new GLParameterPoints(2.0f, Eigen::Vector4f(0.0f, 0.0f, 1.0f, 1.0f)),
-                                                       &currentCloud_->points(), &currentCloud_->normals(), &currentCloud_->rgbs());
-            addDrawable(_drawableCurrentCloud);
-        }
-        else {
-            _drawableCurrentCloud->setTransformation(transform_);
-            DrawablePoints* dp = dynamic_cast<DrawablePoints*>(_drawableCurrentCloud);
-            if(dp) {
-                dp->setPointsAndNormals(&currentCloud_->points(), &currentCloud_->normals());
-                dp->updatePointDrawList();
+        if(_drawCurrentCloud){
+            if(!_drawableCurrentCloud) {
+                _drawableCurrentCloud = new DrawablePoints(transform_,
+                                                           new GLParameterPoints(1.0f, Eigen::Vector4f(0.0f, 0.0f, 1.0f, 1.0f)),
+                                                           &currentCloud_->points(), &currentCloud_->normals());
+                addDrawable(_drawableCurrentCloud);
+            }
+            else {
+                _drawableCurrentCloud->setTransformation(transform_);
+                DrawablePoints* dp = dynamic_cast<DrawablePoints*>(_drawableCurrentCloud);
+                if(dp) {
+                    dp->setPointsAndNormals(&currentCloud_->points(), &currentCloud_->normals());
+                    dp->updatePointDrawList();
+                }
             }
         }
         _currentCloud = currentCloud_;
@@ -225,6 +232,7 @@ protected:
     bool _spin;
     bool _spinOnce;
     bool _needRedraw;
+    bool _drawCurrentCloud = false;
     Eigen::Isometry3f _currentTransform;
     std::vector<Eigen::Isometry3f> _groundtruthPoses;
     std::vector<Eigen::Isometry3f> _estimatedPoses;

@@ -27,7 +27,6 @@ int main(int argc, char *argv[])
     std::string associationsFile = std::string(argv[2]);
     std::string odometryFile = std::string(argv[3]);    
     std::cout << "[INFO]: configuration file " << configurationFile << std::endl;
-//    std::cout << "[INFO]: associations file " << associationsFile << std::endl;
     std::cout << "[INFO]: odometry file " << odometryFile << std::endl;
     if(argc == 5) {
         groundtruthFile = std::string(argv[4]);
@@ -66,41 +65,26 @@ int main(int argc, char *argv[])
     int frame = 0;
     while(mainWindow.isVisible()) {
         app.processEvents();
-        if(mainWindow.getViewer()->needRedraw()) { mainWindow.getViewer()->updateGL(); }
+        if(mainWindow.getViewer()->needRedraw()){
+            mainWindow.getViewer()->updateGL();
+        }
         else {
-            usleep(10000);
-        }        
+            usleep(1000);
+        }
         while(mainWindow.isVisible() && (mainWindow.getViewer()->spinOnce() || mainWindow.getViewer()->spin()) || frame >= filesDepth.size()) {
             string depthFilename, rgbFilename;
             depthFilename = "depth/" + filesDepth[frame];
-            rgbFilename = "rgb/"+ filesDepth[frame++];
-//            std::cout << "---------------------------------------------------------------------------- " << std::endl;
-//            std::cout << "[INFO]: new frame " << depthFilename << std::endl;
+            rgbFilename = "rgb/"+ filesRGB[frame];
+            frame += 1;
             double time = 0;
             Eigen::Isometry3f groundtruthT = Eigen::Isometry3f::Identity();
             Eigen::Isometry3f deltaT = Eigen::Isometry3f::Identity();
-            deltaT.matrix().row(3) << 0.0f, 0.0f, 0.0f, 1.0f;            
             time = mainWindow.getTracker()->spinOnce(deltaT, depthFilename, rgbFilename);
-            globalT = mainWindow.getTracker()->globalT();
-//            std::cout << "[INFO]: delta   T " << t2v(deltaT).transpose() << std::endl;
-//            std::cout << "[INFO]: global  T " << t2v(globalT).transpose() << std::endl;
-//            std::cout << "[INFO]: ground  T " << t2v(groundtruthT).transpose() << std::endl;
-//            std::cout << "[INFO]: computation time " << time << " ms" << std::endl;
-            Quaternionf globalRotation = Quaternionf(globalT.linear());
-            globalRotation.normalize();
-//            os << timestamp1 << " "
-//               << globalT.translation().x() << " "  << globalT.translation().y() << " " << globalT.translation().z() << " "
-//               << globalRotation.x() << " " << globalRotation.y() << " " << globalRotation.z() << " " << globalRotation.w()
-//               << std::endl;
-            totTime += time;
-            counter++;
             app.processEvents();
-            if(mainWindow.getViewer()->needRedraw()) { mainWindow.getViewer()->updateGL(); }
+            if(mainWindow.getViewer()->needRedraw()) {
+                mainWindow.getViewer()->updateGL();
+            }
         }
-//        if(!lastDepth) {
-//            lastDepth = true;
-//            std::cout << "Mean time frame: " << totTime / (double)counter << std::endl;
-//        }
     }
     return 0;
 }

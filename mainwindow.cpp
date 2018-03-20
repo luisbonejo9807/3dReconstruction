@@ -29,3 +29,8 @@ NICPTrackerApp* MainWindow::getTracker(){
 void MainWindow::closeEvent(QCloseEvent *ev){
     ev->accept();
 }
+
+void MainWindow::on_buttonSaveCloud_clicked()
+{
+
+}

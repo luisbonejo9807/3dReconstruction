@@ -17,7 +17,9 @@
 #include "nicp/depthimageconverterintegralimage.h"
 #include "nicp/statscalculatorintegralimage.h"
 #include "nicp/alignerprojective.h"
-#include "nicp/merger.h"
+#include "mymerger.h"
+#include "cloudconfidence.h"
+//#include "nicp/merger.h"
 
 #include <nicp_viewer/nicp_qglviewer.h>
 #include <nicp_viewer/drawable_points.h>
@@ -81,7 +83,7 @@ protected:
     RGBImage _rgbImage;
     DepthImage _depth, _scaledDepth, _referenceScaledDepth;
     IndexImage _scaledIndeces, _referenceScaledIndeces;
-    Cloud* _referenceScene;
+    CloudConfidence* _referenceScene;
     Cloud* _referenceCloud;
     Cloud* _currentCloud;
 
@@ -93,7 +95,7 @@ protected:
     CorrespondenceFinderProjective _correspondenceFinder;
     Linearizer _linearizer;
     AlignerProjective _aligner;
-    Merger _merger;
+    MyMerger _merger;
 
     NICPTrackerAppViewer* _viewer;
 };
