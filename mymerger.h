@@ -163,6 +163,8 @@ public:
      */
     void merge(CloudConfidence *cloud, Eigen::Isometry3f transform = Eigen::Isometry3f::Identity());
 
+    void mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform = Eigen::Isometry3f::Identity());
+
     void voxelize(Cloud* model, float res);
 
 protected:

@@ -119,7 +119,7 @@ public:
         glColor4f(0.0, 0.0f, 1.0f, 1.0f);
         drawAxis(0.2f);
 
-        float radius = 0.02f;
+        float radius = 0.002f;
         // Draw current estimated camera frame
         if(_estimatedPoses.size() > 0) {
             glPushMatrix();
@@ -163,11 +163,18 @@ public:
         _needRedraw = false;
     }
 
-    void updateReferenceScene(Cloud* referenceScene_, Eigen::Isometry3f transform_) {
+    void updateReferenceScene(Cloud* referenceScene_, Eigen::Isometry3f transform_, bool colored = true) {
         if(!_drawableReferenceScene) {
+            if(colored){
             _drawableReferenceScene = new DrawablePoints(transform_,
-                                                         new GLParameterPoints(1.0f, Eigen::Vector4f(1.0f, 0.5f, 0.0f, 0.75f)),
+                                                         new GLParameterPoints(1.0f, Eigen::Vector4f(0.75f, 0.75f, 0.75f, 1.0f)),
                                                          &referenceScene_->points(), &referenceScene_->normals(),&referenceScene_->rgbs());
+            }
+            else{
+            _drawableReferenceScene = new DrawablePoints(transform_,
+                                                         new GLParameterPoints(1.0f, Eigen::Vector4f(0.75f, 0.75f, 0.75f, 1.0f)),
+                                                         &referenceScene_->points(), &referenceScene_->normals());
+            }
             addDrawable(_drawableReferenceScene);            
         }
         else {
@@ -207,7 +214,7 @@ public:
         DrawablePoints* dp = dynamic_cast<DrawablePoints*>(_drawableReferenceScene);
         GLParameterPoints* pp = dynamic_cast<GLParameterPoints*>(_drawableReferenceScene->parameter());
         if(dp && pp) {
-            pp->setColor(Eigen::Vector4f(1.0f, 0.5f, 0.0f, 1.0f));
+            pp->setColor(Eigen::Vector4f(0.75f, 0.75f, 0.75f, 1.0f));
             dp->updatePointDrawList();
         }
         _drawableReferenceScene = 0;

@@ -19,7 +19,7 @@
 #include "nicp/alignerprojective.h"
 #include "mymerger.h"
 #include "cloudconfidence.h"
-//#include "nicp/merger.h"
+#include "nicp/merger.h"
 
 #include <nicp_viewer/nicp_qglviewer.h>
 #include <nicp_viewer/drawable_points.h>
@@ -63,6 +63,9 @@ public:
     double spinOnce(Eigen::Isometry3f& deltaT, const std::string& depthFilename,
                     const std::string &rgbFileName);
 
+    RawDepthImage _rawDepth;
+    RGBImage _rgbImage;
+
 protected:
     double _tBegin, _tEnd;
     double _tInput, _tAlign, _tUpdate;
@@ -79,12 +82,10 @@ protected:
 
     Eigen::Isometry3f _deltaT, _globalT, _localT;
 
-    RawDepthImage _rawDepth;
-    RGBImage _rgbImage;
     DepthImage _depth, _scaledDepth, _referenceScaledDepth;
     IndexImage _scaledIndeces, _referenceScaledIndeces;
     CloudConfidence* _referenceScene;
-    Cloud* _referenceCloud;
+    CloudConfidence* _finalCloud;
     Cloud* _currentCloud;
 
     PinholePointProjector _projector;
@@ -95,7 +96,9 @@ protected:
     CorrespondenceFinderProjective _correspondenceFinder;
     Linearizer _linearizer;
     AlignerProjective _aligner;
+    MyMerger _mymerger;
     MyMerger _merger;
+    long count = 0;
 
     NICPTrackerAppViewer* _viewer;
 };

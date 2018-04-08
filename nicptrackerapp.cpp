@@ -27,7 +27,7 @@ NICPTrackerApp::NICPTrackerApp(const std::string& configurationFile, NICPTracker
     _localT.matrix().row(3) << 0.0f, 0.0f, 0.0f, 1.0f;
 
     _currentCloud = new Cloud();
-    _referenceCloud = new Cloud();
+    _finalCloud = new CloudConfidence();
     _referenceScene = new CloudConfidence();
 
     init(configurationFile);
@@ -191,10 +191,18 @@ void NICPTrackerApp::setInputParameters(map<string, std::vector<float> >& inputP
     std::cout << "[INFO]: m  normal threshold " << _merger.normalThreshold() << std::endl;
     std::cout << "[INFO]: m  distance threshold " << _merger.distanceThreshold() << std::endl;
     std::cout << "[INFO]: m  converter " << _merger.depthImageConverter() << std::endl;
+
+    //My merger
+    if((it = inputParameters.find("depthThreshold")) != inputParameters.end()) _mymerger.setMaxPointDepth(((*it).second)[0]);
+    if((it = inputParameters.find("normalThreshold")) != inputParameters.end()) _mymerger.setNormalThreshold(((*it).second)[0]);
+    if((it = inputParameters.find("distanceThreshold")) != inputParameters.end()) _mymerger.setDistanceThreshold(((*it).second)[0]);
+    _mymerger.setDepthImageConverter(&_converter);
+    _mymerger.setImageSize(424, 512);
+
 }
 
 bool NICPTrackerApp::fillInputParametersMap(map<string, std::vector<float> >& inputParameters,
-                            const string& configurationFilename) {
+                                            const string& configurationFilename) {
     ifstream is(configurationFilename.c_str());
     if(!is) {
         std::cerr << "[ERROR] impossible to open configuration file " << configurationFilename << std::endl;
@@ -221,10 +229,10 @@ bool NICPTrackerApp::fillInputParametersMap(map<string, std::vector<float> >& in
 }
 
 void NICPTrackerApp::compareDepths(float& in_distance, int& in_num,
-                   float& out_distance, int& out_num,
-                   const FloatImage& depths1, const IntImage& indices1,
-                   const FloatImage& depths2, const IntImage& indices2,
-                   float dist, bool scale_z) {
+                                   float& out_distance, int& out_num,
+                                   const FloatImage& depths1, const IntImage& indices1,
+                                   const FloatImage& depths2, const IntImage& indices2,
+                                   float dist, bool scale_z) {
     if(depths1.rows != indices1.rows ||
             depths1.cols != indices1.cols) {
         std::cerr << "[ERROR]: image1 size mismatch in compareDepths" << std::endl;
@@ -283,10 +291,14 @@ void NICPTrackerApp::setStartingPose(const Eigen::Isometry3f startingPose){
 
 double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& depthFilename, const std::string &rgbFileName) {
     // Generate new current cloud
-    _tBegin = get_time();    
+    _tBegin = get_time();
     _rawDepth = imread(depthFilename, -1);
     _rgbImage = imread(rgbFileName, 1);
     cvtColor(_rgbImage, _rgbImage, CV_BGR2RGB);
+    Mat element = getStructuringElement(MORPH_CROSS, Size(3,3));
+    /// Apply the erosion operation
+    erode(_rawDepth, _rawDepth, element);
+    //    medianBlur(_rawDepth, _rawDepth, 5);
     if(!_rawDepth.data) {
         std::cerr << "Error: impossible to read image file " << depthFilename << std::endl;
         exit(-1);
@@ -299,15 +311,16 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
         DepthImage_convert_16UC1_to_32FC1(_scaledDepth, _rawDepth, _depthScaling);
     }
     _scaledIndeces.create(_scaledDepth.rows, _scaledDepth.cols);
-//        _converter.compute(*_currentCloud, _scaledDepth, Eigen::Isometry3f::Identity());
+    //        _converter.compute(*_currentCloud, _scaledDepth, Eigen::Isometry3f::Identity());
     _converter.compute(*_currentCloud, _scaledDepth, _rgbImage);
     _tEnd = get_time();
     _tInput = _tEnd - _tBegin;
 
-    if(_viewer) { _viewer->updateReferenceScene(_referenceScene, _globalT); }
+//    if(_viewer) { _viewer->updateReferenceScene(_referenceScene, _globalT, true); }
+        if(_viewer) { _viewer->updateReferenceScene(_finalCloud, _globalT, true); }
 
     // Align the new cloud
-    _aligner.setInitialGuess(deltaT);
+    _aligner.setInitialGuess(Eigen::Isometry3f::Identity());
     _aligner.setReferenceCloud(_referenceScene);
     _aligner.setCurrentCloud(_currentCloud);
     _tBegin = get_time();
@@ -327,34 +340,49 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _globalT.linear() -= 0.5 * R * E;
 
     _converter.projector()->project(_referenceScaledIndeces, _referenceScaledDepth, _referenceScene->points());
-//    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
-//                  _referenceScaledDepth, _referenceScaledIndeces,
-//                  _scaledDepth, _scaledIndeces,
-//                  0.05f, false);
-    Eigen::AngleAxisf aa(_localT.linear());
-//    if(_localT.translation().norm() > _breakingDistance ||
-//            fabs(aa.angle()) > _breakingAngle ||
-//            (float)_inNum / (float)(_inNum + _outNum) < _breakingInlierRatio) {
-//        _localT.setIdentity();
-//        _referenceScene = new Cloud();
-//        if(_viewer) { _viewer->resetReferenceScene(); }
-//    }
+    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
+                  _referenceScaledDepth, _referenceScaledIndeces,
+                  _scaledDepth, _scaledIndeces,
+                  0.05f, false);
+
+    //Look for a strange movement of camera and reset ICP
+    //    Eigen::AngleAxisf aa(_localT.linear());
+    //    if(_localT.translation().norm() > _breakingDistance ||
+    //            fabs(aa.angle()) > _breakingAngle ||
+    //            (float)_inNum / (float)(_inNum + _outNum) < _breakingInlierRatio) {
+    //        _localT.setIdentity();
+    //        _referenceScene = new CloudConfidence();
+    //        if(_viewer) { _viewer->resetReferenceScene(); }
+    //    }
+
+    //
     _referenceScene->add(*_currentCloud, _deltaT);
     _referenceScene->transformInPlace(_deltaT.inverse());
-    _merger.merge(_referenceScene);
+    _merger.mergeFinal(_referenceScene);
+    //    _merger.voxelize(_referenceScene, 0.005f);
+
+    _finalCloud->add(*_currentCloud, _deltaT);
+    _finalCloud->transformInPlace(_deltaT.inverse());
+    cerr << "-------\n";
+    cerr << _finalCloud->points().size() << endl;
+    _mymerger.voxelize(_finalCloud, 0.008f);
+    //    cerr << _finalCloud->points().size() << endl;
+    //    _mymerger.mergeFinal(_finalCloud);
+
+    count++;
     _seq++;
     _tEnd = get_time();
     _tUpdate = _tEnd - _tBegin;
-//    std::cout << "[INFO]: inlier ratio " << (float)_inNum / (float)(_inNum + _outNum) << std::endl;
+    //    std::cout << "[INFO]: inlier ratio " << (float)_inNum / (float)(_inNum + _outNum) << std::endl;
 
     if(_viewer) {
         _viewer->updateCurrentCloud(_currentCloud, _globalT * _deltaT.inverse());
     }
 
-//    std::cout << "[INFO]: timings [input: " << _tInput << "] "
-//              << "[align: " << _tAlign << "] "
-//              << "[update: " << _tUpdate << "] "
-//              << "[total: " << _tInput + _tAlign + _tUpdate << "]" << std::endl;
+    //    std::cout << "[INFO]: timings [input: " << _tInput << "] "
+    //              << "[align: " << _tAlign << "] "
+    //              << "[update: " << _tUpdate << "] "
+    //              << "[total: " << _tInput + _tAlign + _tUpdate << "]" << std::endl;
 
     return _tAlign + _tUpdate;
 }

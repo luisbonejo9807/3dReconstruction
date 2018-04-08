@@ -23,6 +23,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     vector<unsigned int> _pointsMatchingCounter; /**< Vector to store how many times each point have been matched with any other point.*/
+    vector<unsigned int> _age; /**< Vector to store how many frames it was drawn*/
 
     CloudConfidence() {}
 
@@ -30,20 +31,24 @@ public:
         if (s) {
             _points.resize(s);
             _pointsMatchingCounter.resize(s);
+            _age.resize(s);
             _normals.resize(s);
             _stats.resize(s);
             _normalInformationMatrix.resize(s);
             _pointInformationMatrix.resize(s);
             _gaussians.resize(s);
             if(hasRGB) { _rgbs.resize(s); }
-        } else
+        }
+        else{
             clear();
+        }
     }
 
     void add(Cloud& cloud, const Eigen::Isometry3f &T) {
         cloud.transformInPlace(T);
         size_t k = _points.size();
         _pointsMatchingCounter.resize(k + cloud.points().size());
+        _age.resize(k + cloud.points().size());
         _points.resize(k + cloud.points().size());
         _normals.resize(k + cloud.normals().size());
         _stats.resize(k + cloud.stats().size());
@@ -52,6 +57,9 @@ public:
         _gaussians.resize(k + cloud.gaussians().size());
         if (_rgbs.size() + cloud.rgbs().size())
             _rgbs.resize(k + cloud.rgbs().size());
+
+        //k é o ultimo ponto adicionado da nuvem anterior
+        //Fazer a adição verificando se o ponto já está presente na nuvem
         for(int i = 0; k < _points.size(); k++, i++) {
             _points[k] = cloud.points()[i];
             _normals[k] = cloud.normals()[i];
@@ -67,5 +75,5 @@ public:
                 _rgbs[k] = cloud.rgbs()[i];
             }
         }
-    }
+    }    
 };
