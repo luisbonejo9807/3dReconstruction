@@ -340,10 +340,10 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _globalT.linear() -= 0.5 * R * E;
 
     _converter.projector()->project(_referenceScaledIndeces, _referenceScaledDepth, _referenceScene->points());
-    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
-                  _referenceScaledDepth, _referenceScaledIndeces,
-                  _scaledDepth, _scaledIndeces,
-                  0.05f, false);
+//    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
+//                  _referenceScaledDepth, _referenceScaledIndeces,
+//                  _scaledDepth, _scaledIndeces,
+//                  0.05f, false);
 
     //Look for a strange movement of camera and reset ICP
     //    Eigen::AngleAxisf aa(_localT.linear());
@@ -358,14 +358,15 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     //
     _referenceScene->add(*_currentCloud, _deltaT);
     _referenceScene->transformInPlace(_deltaT.inverse());
-    _merger.mergeFinal(_referenceScene);
+    _merger.merge(_referenceScene);
     //    _merger.voxelize(_referenceScene, 0.005f);
 
     _finalCloud->add(*_currentCloud, _deltaT);
     _finalCloud->transformInPlace(_deltaT.inverse());
-    cerr << "-------\n";
-    cerr << _finalCloud->points().size() << endl;
-    _mymerger.voxelize(_finalCloud, 0.008f);
+    _mymerger.mergeFinal(_finalCloud);
+//    cerr << "-------\n";
+//    cerr << _finalCloud->points().size() << endl;
+//    _mymerger.voxelize(_finalCloud, 0.0f);
     //    cerr << _finalCloud->points().size() << endl;
     //    _mymerger.mergeFinal(_finalCloud);
 

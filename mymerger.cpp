@@ -22,25 +22,33 @@ void MyMerger::merge(CloudConfidence *cloud, Eigen::Isometry3f transform) {
     pointProjector->project(_indexImage,
                             _depthImage,
                             cloud->points());
+    int confThreshold = 10;
     int target = 0;
     int distance = 0;
     _collapsedIndices.resize(cloud->points().size());
     std::fill(_collapsedIndices.begin(), _collapsedIndices.end(), -1);
 
     int killed = 0;
-    int normalkilled = 0;
     int elses = 0;
     int currentIndex = 0;
+    int jumped = 0;
     for(size_t i = 0; i < cloud->points().size(); currentIndex++ ,i++) {
+
+        //age of point increased
+        cloud->_age[i] += 1;
+
+        if(cloud->_age[i] > confThreshold + 3 && cloud->_pointsMatchingCounter[i] < confThreshold){
+            _collapsedIndices[i] = 999999999;
+            continue;
+        }
+
         const Point currentPoint = cloud->points()[i];
         const Normal currentNormal = cloud->normals()[i];
         int r = -1, c = -1;
         float depth = 0.0f;
         pointProjector->project(c, r, depth, currentPoint);
-        if(depth < 0 || /*depth < _maxPointDepth ||*/
-                r < 0 || r >= _depthImage.rows ||
+        if(depth < 0 || r < 0 || r >= _depthImage.rows ||
                 c < 0 || c >= _depthImage.cols) {
-            //distance++;
             continue;
         }
         float &targetZ = _depthImage(r, c);
@@ -54,25 +62,28 @@ void MyMerger::merge(CloudConfidence *cloud, Eigen::Isometry3f transform) {
         viewPointDirection(3)=0;
         viewPointDirection.normalize();
 
-        if(targetIndex == currentIndex) {
-            _collapsedIndices[currentIndex] = currentIndex;
-            killed++;
-        }
-        if(fabs(depth - targetZ) < 0.002f
+        if(fabs(depth - targetZ) <= 1.5f
                 /*&& acos(currentNormal.dot(targetNormal)) < 0.2f*/
-                /*&& viewPointDirection.dot(targetNormal) > 0.9f*/) {
+                /*&& fabs(acos(viewPointDirection.dot(targetNormal)) - 1) < 0.05f*/) {
             Gaussian3f &targetGaussian = cloud->gaussians()[targetIndex];
             Gaussian3f &currentGaussian = cloud->gaussians()[currentIndex];
             targetGaussian.addInformation(currentGaussian);
 
             //increase confidence of point
             cloud->_pointsMatchingCounter[i] += 1;
+            cloud->_pointsMatchingCounter[targetIndex] += 1;
             double ni = cloud->_pointsMatchingCounter[i];
 
+            //if(cloud->_pointsMatchingCounter[i] <= confThreshold){
+            double factor = 1/fabs(acos(viewPointDirection.dot(targetNormal)));
             //calculate mean of points that project onto same pixel and has close depth
-            cloud->points()[i].head<3>() = (ni * cloud->points()[i].head<3>() + cloud->points()[targetIndex].head<3>()) / (ni + 1);
+            cloud->points()[i].head<3>() = (ni * cloud->points()[i].head<3>() + factor*cloud->points()[targetIndex].head<3>()) / (ni + factor);
+            cloud->rgbs()[i][0] = (ni * cloud->rgbs()[i][0] + cloud->rgbs()[targetIndex][0]) / (ni + 1);
+            cloud->rgbs()[i][1] = (ni * cloud->rgbs()[i][1] + cloud->rgbs()[targetIndex][1]) / (ni + 1);
+            cloud->rgbs()[i][2] = (ni * cloud->rgbs()[i][2] + cloud->rgbs()[targetIndex][2]) / (ni + 1);
             _collapsedIndices[currentIndex] = targetIndex;
             killed++;
+            //            }
         }
         else{
             elses++;
@@ -112,11 +123,12 @@ void MyMerger::merge(CloudConfidence *cloud, Eigen::Isometry3f transform) {
     cloud->normalInformationMatrix().resize(k);
     if(cloud->rgbs().size())
         cloud->rgbs().resize(k);
-    std::cout << "[INFO]: number of suppressed points " << murdered << std::endl;
-    std::cout << "[INFO]: number of killed points " << killed << std::endl;
-    std::cout << "[INFO]: number of normal killed points " << normalkilled << std::endl;
-    std::cout << "[INFO]: number of elses points " << elses << std::endl;
-    std::cout << "[INFO]: resized cloud from " << originalSize << " to " << k << " points" <<std::endl;
+
+    std::cerr << "[INFO]: number of jumped points " << jumped << std::endl;
+    std::cerr << "[INFO]: number of suppressed points " << murdered << std::endl;
+    std::cerr << "[INFO]: number of killed points " << killed << std::endl;
+    std::cerr << "[INFO]: number of elses points " << elses << std::endl;
+    std::cerr << "[INFO]: resized cloud from " << originalSize << " to " << k << " points" <<std::endl;
 
     pointProjector->setTransform(oldTransform);
 }
@@ -139,7 +151,7 @@ void MyMerger::mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform) {
     _collapsedIndices.resize(cloud->points().size());
     std::fill(_collapsedIndices.begin(), _collapsedIndices.end(), -1);
 
-    int killed = 0;    
+    int killed = 0;
     int elses = 0;
     int currentIndex = 0;
     int jumped = 0;
@@ -150,18 +162,18 @@ void MyMerger::mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform) {
         //        cloud->rgbs()[i][0] = cloud->_age[i] * 255/(confThreshold + 0) > 255 ? 255: cloud->_age[i] * 255/(confThreshold + 0);
         //        cloud->rgbs()[i][1] = 0;
         //        cloud->rgbs()[i][2] = 0;
-//        cloud->rgbs()[i][0] = 200;
-//        cloud->rgbs()[i][1] = 200;
-//        cloud->rgbs()[i][2] = 200;
+        //        cloud->rgbs()[i][0] = 200;
+        //        cloud->rgbs()[i][1] = 200;
+        //        cloud->rgbs()[i][2] = 200;
 
-//        if(cloud->_pointsMatchingCounter[i] >= confThreshold){
-//            jumped++;
+        //        if(cloud->_pointsMatchingCounter[i] >= confThreshold){
+        //            jumped++;
+        //            continue;
+        //        }
+//        if(cloud->_age[i] > confThreshold + 5 && cloud->_pointsMatchingCounter[i] < confThreshold){
+//            _collapsedIndices[i] = 999999999;
 //            continue;
 //        }
-        if(cloud->_age[i] > confThreshold + 5 && cloud->_pointsMatchingCounter[i] < confThreshold){
-            _collapsedIndices[i] = 999999999;
-            continue;
-        }
 
         const Point currentPoint = cloud->points()[i];
         const Normal currentNormal = cloud->normals()[i];
@@ -183,7 +195,7 @@ void MyMerger::mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform) {
         viewPointDirection(3)=0;
         viewPointDirection.normalize();
 
-        if(fabs(depth - targetZ) <= 1.5f
+        if(fabs(depth - targetZ) <= 0.005f
                 /*&& acos(currentNormal.dot(targetNormal)) < 0.2f*/
                 /*&& fabs(acos(viewPointDirection.dot(targetNormal)) - 1) < 0.05f*/) {
             Gaussian3f &targetGaussian = cloud->gaussians()[targetIndex];
@@ -196,15 +208,15 @@ void MyMerger::mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform) {
             double ni = cloud->_pointsMatchingCounter[i];
 
             //if(cloud->_pointsMatchingCounter[i] <= confThreshold){
-                double factor = 1/fabs(acos(viewPointDirection.dot(targetNormal)));
-                //calculate mean of points that project onto same pixel and has close depth
-                cloud->points()[i].head<3>() = (ni * cloud->points()[i].head<3>() + factor*cloud->points()[targetIndex].head<3>()) / (ni + factor);
-                cloud->rgbs()[i][0] = (ni * cloud->rgbs()[i][0] + cloud->rgbs()[targetIndex][0]) / (ni + 1);
-                cloud->rgbs()[i][1] = (ni * cloud->rgbs()[i][1] + cloud->rgbs()[targetIndex][1]) / (ni + 1);
-                cloud->rgbs()[i][2] = (ni * cloud->rgbs()[i][2] + cloud->rgbs()[targetIndex][2]) / (ni + 1);
-                _collapsedIndices[currentIndex] = targetIndex;
-                killed++;
-//            }
+            double factor = 1/fabs(acos(viewPointDirection.dot(targetNormal)));
+            //calculate mean of points that project onto same pixel and has close depth
+            cloud->points()[i].head<3>() = (ni * cloud->points()[i].head<3>() + factor*cloud->points()[targetIndex].head<3>()) / (ni + factor);
+            cloud->rgbs()[i][0] = (ni * cloud->rgbs()[i][0] + cloud->rgbs()[targetIndex][0]) / (ni + 1);
+            cloud->rgbs()[i][1] = (ni * cloud->rgbs()[i][1] + cloud->rgbs()[targetIndex][1]) / (ni + 1);
+            cloud->rgbs()[i][2] = (ni * cloud->rgbs()[i][2] + cloud->rgbs()[targetIndex][2]) / (ni + 1);
+            _collapsedIndices[currentIndex] = targetIndex;
+            killed++;
+            //            }
         }
         else{
             elses++;
