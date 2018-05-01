@@ -295,10 +295,10 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _rawDepth = imread(depthFilename, -1);
     _rgbImage = imread(rgbFileName, 1);
     cvtColor(_rgbImage, _rgbImage, CV_BGR2RGB);
-    Mat element = getStructuringElement(MORPH_CROSS, Size(3,3));
+    //    Mat element = getStructuringElement(MORPH_CROSS, Size(3,3));
     /// Apply the erosion operation
-    erode(_rawDepth, _rawDepth, element);
-    //    medianBlur(_rawDepth, _rawDepth, 5);
+    //    erode(_rawDepth, _rawDepth, element);
+    medianBlur(_rawDepth, _rawDepth, 5);
     if(!_rawDepth.data) {
         std::cerr << "Error: impossible to read image file " << depthFilename << std::endl;
         exit(-1);
@@ -316,11 +316,12 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _tEnd = get_time();
     _tInput = _tEnd - _tBegin;
 
-//    if(_viewer) { _viewer->updateReferenceScene(_referenceScene, _globalT, true); }
-        if(_viewer) { _viewer->updateReferenceScene(_finalCloud, _globalT, true); }
+    //        if(_viewer) { _viewer->updateReferenceScene(_referenceScene, _globalT, true); }
+    if(_viewer) { _viewer->updateReferenceScene(_finalCloud, _globalT, true); }
 
     // Align the new cloud
-    _aligner.setInitialGuess(Eigen::Isometry3f::Identity());
+    //    _aligner.setInitialGuess(Eigen::Isometry3f::Identity());
+    _aligner.setInitialGuess(deltaT);
     _aligner.setReferenceCloud(_referenceScene);
     _aligner.setCurrentCloud(_currentCloud);
     _tBegin = get_time();
@@ -340,10 +341,10 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _globalT.linear() -= 0.5 * R * E;
 
     _converter.projector()->project(_referenceScaledIndeces, _referenceScaledDepth, _referenceScene->points());
-//    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
-//                  _referenceScaledDepth, _referenceScaledIndeces,
-//                  _scaledDepth, _scaledIndeces,
-//                  0.05f, false);
+    //    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
+    //                  _referenceScaledDepth, _referenceScaledIndeces,
+    //                  _scaledDepth, _scaledIndeces,
+    //                  0.05f, false);
 
     //Look for a strange movement of camera and reset ICP
     //    Eigen::AngleAxisf aa(_localT.linear());
@@ -364,9 +365,9 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _finalCloud->add(*_currentCloud, _deltaT);
     _finalCloud->transformInPlace(_deltaT.inverse());
     _mymerger.mergeFinal(_finalCloud);
-//    cerr << "-------\n";
-//    cerr << _finalCloud->points().size() << endl;
-//    _mymerger.voxelize(_finalCloud, 0.0f);
+    //    cerr << "-------\n";
+    //    cerr << _finalCloud->points().size() << endl;
+    //    _mymerger.voxelize(_finalCloud, 0.004f);
     //    cerr << _finalCloud->points().size() << endl;
     //    _mymerger.mergeFinal(_finalCloud);
 
