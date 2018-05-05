@@ -295,10 +295,10 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _rawDepth = imread(depthFilename, -1);
     _rgbImage = imread(rgbFileName, 1);
     cvtColor(_rgbImage, _rgbImage, CV_BGR2RGB);
-    //    Mat element = getStructuringElement(MORPH_CROSS, Size(3,3));
-    /// Apply the erosion operation
-    //    erode(_rawDepth, _rawDepth, element);
+    Mat element = getStructuringElement(MORPH_RECT, Size(5,5));
     medianBlur(_rawDepth, _rawDepth, 5);
+    erode(_rawDepth, _rawDepth, element);
+
     if(!_rawDepth.data) {
         std::cerr << "Error: impossible to read image file " << depthFilename << std::endl;
         exit(-1);
@@ -347,14 +347,14 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     //                  0.05f, false);
 
     //Look for a strange movement of camera and reset ICP
-    //    Eigen::AngleAxisf aa(_localT.linear());
-    //    if(_localT.translation().norm() > _breakingDistance ||
-    //            fabs(aa.angle()) > _breakingAngle ||
-    //            (float)_inNum / (float)(_inNum + _outNum) < _breakingInlierRatio) {
-    //        _localT.setIdentity();
-    //        _referenceScene = new CloudConfidence();
-    //        if(_viewer) { _viewer->resetReferenceScene(); }
-    //    }
+        Eigen::AngleAxisf aa(_localT.linear());
+        if(_localT.translation().norm() > _breakingDistance ||
+                fabs(aa.angle()) > _breakingAngle ||
+                (float)_inNum / (float)(_inNum + _outNum) < _breakingInlierRatio) {
+            _localT.setIdentity();
+            _referenceScene = new CloudConfidence();
+            if(_viewer) { _viewer->resetReferenceScene(); }
+        }
 
     //
     _referenceScene->add(*_currentCloud, _deltaT);

@@ -156,7 +156,6 @@ void MyMerger::mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform) {
     int currentIndex = 0;
     int jumped = 0;
     for(size_t i = 0; i < cloud->points().size(); currentIndex++ ,i++) {
-
         const Point currentPoint = cloud->points()[i];
         const Normal currentNormal = cloud->normals()[i];
         int r = -1, c = -1;
@@ -177,15 +176,34 @@ void MyMerger::mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform) {
         viewPointDirection(3)=0;
         viewPointDirection.normalize();
 
-        if(fabs(depth - targetZ) <= 0.035f
-                /*&& acos(currentNormal.dot(targetNormal)) < 0.2f*/
-                /*&& fabs(acos(viewPointDirection.dot(targetNormal)) - 1) < 0.05f*/) {
+        if(cloud->_pointsMatchingCounter[targetIndex] > 10){
+            continue;
+        }
+
+        if(cloud->rgbs()[i][0] < 40 && cloud->rgbs()[i][1] < 20 && cloud->rgbs()[i][2] < 40){
+            _collapsedIndices[i] = 999999999;
+            continue;
+        }
+
+        if(cloud->_age[i] > 50){
+            if(fabs(acos(viewPointDirection.dot(targetNormal)) - 1) > 0.9f){
+                _collapsedIndices[i] = 999999999;
+                continue;
+            }
+        }
+//            else{
+                //age of point increased
+//                cloud->_age[i] += 1;
+//            }
+//        }
+
+        if(fabs(depth - targetZ) <= 0.038f) {
             Gaussian3f &targetGaussian = cloud->gaussians()[targetIndex];
             Gaussian3f &currentGaussian = cloud->gaussians()[currentIndex];
             targetGaussian.addInformation(currentGaussian);
 
             //increase confidence of point
-            cloud->_pointsMatchingCounter[i] += 1;
+//            cloud->_pointsMatchingCounter[i] += 1;
             cloud->_pointsMatchingCounter[targetIndex] += 1;
             double ni = cloud->_pointsMatchingCounter[i];
 
