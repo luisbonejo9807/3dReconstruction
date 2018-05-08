@@ -75,7 +75,8 @@ void MyMerger::merge(CloudConfidence *cloud, Eigen::Isometry3f transform) {
             double ni = cloud->_pointsMatchingCounter[i];
 
             //if(cloud->_pointsMatchingCounter[i] <= confThreshold){
-            double factor = 1/fabs(acos(viewPointDirection.dot(targetNormal)));
+//            double factor = 1/fabs(acos(viewPointDirection.dot(targetNormal)));
+            double factor = 1;
             //calculate mean of points that project onto same pixel and has close depth
             cloud->points()[i].head<3>() = (ni * cloud->points()[i].head<3>() + factor*cloud->points()[targetIndex].head<3>()) / (ni + factor);
             cloud->rgbs()[i][0] = (ni * cloud->rgbs()[i][0] + cloud->rgbs()[targetIndex][0]) / (ni + 1);
@@ -180,24 +181,24 @@ void MyMerger::mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform) {
             continue;
         }
 
-        if(cloud->rgbs()[i][0] < 40 && cloud->rgbs()[i][1] < 20 && cloud->rgbs()[i][2] < 40){
+        if(cloud->rgbs()[i][0] < 50 && cloud->rgbs()[i][1] < 70 && cloud->rgbs()[i][2] < 50){
             _collapsedIndices[i] = 999999999;
             continue;
         }
 
-        if(cloud->_age[i] > 50){
-            if(fabs(acos(viewPointDirection.dot(targetNormal)) - 1) > 0.9f){
-                _collapsedIndices[i] = 999999999;
-                continue;
-            }
-        }
+//        if(cloud->_age[i] > 50){
+//            if(fabs(acos(viewPointDirection.dot(targetNormal)) - 1) > 0.9f){
+//                _collapsedIndices[i] = 999999999;
+//                continue;
+//            }
+//        }
 //            else{
                 //age of point increased
 //                cloud->_age[i] += 1;
 //            }
 //        }
 
-        if(fabs(depth - targetZ) <= 0.038f) {
+        if(fabs(depth - targetZ) <= 0.025f) {
             Gaussian3f &targetGaussian = cloud->gaussians()[targetIndex];
             Gaussian3f &currentGaussian = cloud->gaussians()[currentIndex];
             targetGaussian.addInformation(currentGaussian);
