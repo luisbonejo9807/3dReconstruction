@@ -15,7 +15,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::initConfigs(std::string configFile)
 {    
-    tracker = new NICPTrackerApp(configFile, ui->viewer);
+    tracker = new NICPTrackerApp(configFile, ui->viewer, ui->viewDepth, ui->viewRGB, ui->viewProjection);
 }
 
 NICPTrackerAppViewer* MainWindow::getViewer(){

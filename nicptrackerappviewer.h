@@ -54,7 +54,7 @@ public:
         qglviewer::Camera* oldcam = camera();
         qglviewer::Camera* cam = new StandardCamera();
         setCamera(cam);
-        cam->setPosition(qglviewer::Vec(0.0f, 0.0f, 0.0f));
+        cam->setPosition(qglviewer::Vec(-1.0f, -0.5f, -4.0f));
         cam->setUpVector(qglviewer::Vec(0.0f, -1.0f, 0.0f));
         cam->lookAt(qglviewer::Vec(0.0f, 0.0f, 1.0f));
         delete oldcam;
@@ -62,7 +62,7 @@ public:
 
     void drawSphere(GLfloat radius) {
         glNormal3f(0.0f, 0.0f, -1.0f);
-        gluSphere(GLUWrapper::getQuadradic(), radius, 32, 32);
+        gluSphere(GLUWrapper::getQuadradic(), radius, 50, 32);
     }
 
     void drawPyramid(GLfloat pyrH, GLfloat pyrW) {
@@ -117,16 +117,17 @@ public:
         NICPQGLViewer::draw();
 
         glColor4f(0.0, 0.0f, 1.0f, 1.0f);
-        drawAxis(0.2f);
+        drawAxis(2.5f);
+        drawSphere(0.2f);
 
-        float radius = 0.002f;
+        float radius = 0.050f;
         // Draw current estimated camera frame
         if(_estimatedPoses.size() > 0) {
             glPushMatrix();
             glColor4f(1.0, 0.0f, 0.0f, 1.0f);
             glMultMatrixf(_estimatedPoses[_estimatedPoses.size() - 1].data());
-            float pyrH = 0.1f;
-            float pyrW = 0.05f;
+            float pyrH = 0.5f;
+            float pyrW = 0.25f;
             drawPyramidWireframe(pyrH, pyrW);
             glPopMatrix();
         }
@@ -175,13 +176,13 @@ public:
                                                          new GLParameterPoints(1.0f, Eigen::Vector4f(0.75f, 0.75f, 0.75f, 1.0f)),
                                                          &referenceScene_->points(), &referenceScene_->normals());
             }
-            addDrawable(_drawableReferenceScene);            
+            addDrawable(_drawableReferenceScene);
         }
         else {
             _drawableReferenceScene->setTransformation(transform_);
             DrawablePoints* dp = dynamic_cast<DrawablePoints*>(_drawableReferenceScene);            
             if(dp) {
-                dp->updatePointDrawList();            
+                dp->updatePointDrawList();
             }
         }
         _needRedraw = true;

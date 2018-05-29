@@ -164,10 +164,11 @@ public:
     void merge(CloudConfidence *cloud, Eigen::Isometry3f transform = Eigen::Isometry3f::Identity());
 
     void mergeFinal(CloudConfidence *cloud, Eigen::Isometry3f transform = Eigen::Isometry3f::Identity());
+    void mergeFinal(CloudConfidence *cloud1, CloudConfidence *cloud2, Eigen::Isometry3f transform = Eigen::Isometry3f::Identity());
 
     void voxelize(Cloud* model, float res);
 
-protected:
+public:
     float _distanceThreshold; /**< Distance threshold for which points over it are not collapsed. */
     float _normalThreshold; /**< Normal threshold for which points with normals over it are not collapsed. */
     float _maxPointDepth; /**< Depth threshold for which points over it are not collapsed. */
@@ -176,5 +177,12 @@ protected:
 
     DepthImage _depthImage; /**< DepthImage for inner computations. */
     IntImage _indexImage; /**< IndexImage for inner computations. */
+
+
+    DepthImage _depthImage1; /**< DepthImage for inner computations. */
+    IntImage _indexImage1; /**< IndexImage for inner computations. */
+    DepthImage _depthImage2; /**< DepthImage for inner computations. */
+    IntImage _indexImage2; /**< IndexImage for inner computations. */
+
     std::vector<int> _collapsedIndices; /**< Vector of collapsed point indeces to merge. */
 };

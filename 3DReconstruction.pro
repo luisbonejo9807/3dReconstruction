@@ -28,7 +28,8 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     nicptrackerapp.cpp \
-    mymerger.cpp
+    mymerger.cpp \    
+    epnp/epnp.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -39,7 +40,10 @@ HEADERS += \
     filereading.h \
     pinholepointcolorprojector.h \
     mymerger.h \
-    cloudconfidence.h
+    cloudconfidence.h \
+    epnp/epnp.h \
+    cvimagewidget.h \
+    fastbilateral.h
 
 FORMS += \
         mainwindow.ui
@@ -49,6 +53,6 @@ INCLUDEPATH += /usr/include/eigen3
 INCLUDEPATH += /home/thiago/Libraries/nicp/nicp
 INCLUDEPATH += /usr/include/QGLViewer
 LIBS += -lglut -lGLU
-LIBS += -L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_imgproc
+LIBS += -L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_features2d -lopencv_video
 LIBS += -L/home/thiago/Libraries/nicp/lib -lnicp -lnicp_viewer
 LIBS += -lQGLViewer

@@ -22,7 +22,7 @@ class CloudConfidence : public Cloud{
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-    vector<unsigned int> _pointsMatchingCounter; /**< Vector to store how many times each point have been matched with any other point.*/
+    vector<double> _pointsMatchingCounter; /**< Vector to store how many times each point have been matched with any other point.*/
     vector<unsigned int> _age; /**< Vector to store how many frames it was drawn*/
 
     CloudConfidence() {}

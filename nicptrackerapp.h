@@ -10,6 +10,7 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 #include "nicp/bm_se3.h"
 #include "nicp/imageutils.h"
@@ -25,6 +26,8 @@
 #include <nicp_viewer/drawable_points.h>
 
 #include "nicptrackerappviewer.h"
+#include "cvimagewidget.h"
+#include "epnp/epnp.h"
 
 using namespace std;
 using namespace Eigen;
@@ -34,8 +37,8 @@ using namespace nicp;
 class NICPTrackerApp {
 public:
 
-    NICPTrackerApp(const std::string& configurationFile, NICPTrackerAppViewer* viewer_ = 0);
-
+    NICPTrackerApp(const std::string& configurationFile, NICPTrackerAppViewer* viewer_ = 0,
+                   CVImageWidget *viewDepth = 0, CVImageWidget *viewRGB = 0, CVImageWidget *viewProjection = 0);
     ~NICPTrackerApp();
 
     void init(const std::string& configurationFile);
@@ -87,6 +90,7 @@ protected:
     CloudConfidence* _referenceScene;
     CloudConfidence* _finalCloud;
     Cloud* _currentCloud;
+    epnp pnp;
 
     PinholePointProjector _projector;
     StatsCalculatorIntegralImage _statsCalculator;
@@ -101,6 +105,16 @@ protected:
     long count = 0;
 
     NICPTrackerAppViewer* _viewer;
+    CVImageWidget *viewRGB;
+    CVImageWidget *viewDepth;
+    CVImageWidget *viewProjection;
+    vector<KeyPoint> kps1;
+    vector<KeyPoint> kps2;
+    Mat imgPrev, imgActual;
+
+    vector<Point2f> points1, points2;
+    vector<uchar> statusFeatures;
+    vector<float> featuresErrors;
 };
 
 #endif // NICPTRACKERAPP_H

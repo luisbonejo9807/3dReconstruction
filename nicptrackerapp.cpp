@@ -1,7 +1,12 @@
 #include "nicptrackerapp.h"
 
-NICPTrackerApp::NICPTrackerApp(const std::string& configurationFile, NICPTrackerAppViewer* viewer_ = 0) {
+NICPTrackerApp::NICPTrackerApp(const std::string& configurationFile, NICPTrackerAppViewer* viewer_ = 0,
+                               CVImageWidget *viewDepth, CVImageWidget *viewRGB, CVImageWidget *viewProjection) {
     _viewer = viewer_;
+    this->viewDepth = viewDepth;
+    this->viewRGB = viewRGB;
+    this->viewProjection = viewProjection;
+
     if(_viewer) { std::cout << "[INFO] g  enabled viewer " << _viewer << std::endl; }
     else { std::cout << "[INFO]: g  disabled viewer " << _viewer << std::endl; }
 
@@ -91,6 +96,8 @@ void NICPTrackerApp::setInputParameters(map<string, std::vector<float> >& inputP
             _K(1, 1) = ((*it).second)[1];
             _K(0, 2) = ((*it).second)[2];
             _K(1, 2) = ((*it).second)[3];
+            //Set pnp camera parameters
+            pnp.set_internal_parameters(_K(1, 2), _K(0, 2), _K(1, 1), _K(0, 0));
         }
         else { std::cerr << "[WARNING]: K has bad formatting from file, expecting 4 values but " << (*it).second.size() << " where given... keeping default values" << std::endl; }
     }
@@ -186,7 +193,7 @@ void NICPTrackerApp::setInputParameters(map<string, std::vector<float> >& inputP
     if((it = inputParameters.find("normalThreshold")) != inputParameters.end()) _merger.setNormalThreshold(((*it).second)[0]);
     if((it = inputParameters.find("distanceThreshold")) != inputParameters.end()) _merger.setDistanceThreshold(((*it).second)[0]);
     _merger.setDepthImageConverter(&_converter);
-    _merger.setImageSize(424, 512);
+    _merger.setImageSize(240, 320);
     std::cout << "[INFO]: m  depth threshold " << _merger.maxPointDepth() << std::endl;
     std::cout << "[INFO]: m  normal threshold " << _merger.normalThreshold() << std::endl;
     std::cout << "[INFO]: m  distance threshold " << _merger.distanceThreshold() << std::endl;
@@ -197,7 +204,7 @@ void NICPTrackerApp::setInputParameters(map<string, std::vector<float> >& inputP
     if((it = inputParameters.find("normalThreshold")) != inputParameters.end()) _mymerger.setNormalThreshold(((*it).second)[0]);
     if((it = inputParameters.find("distanceThreshold")) != inputParameters.end()) _mymerger.setDistanceThreshold(((*it).second)[0]);
     _mymerger.setDepthImageConverter(&_converter);
-    _mymerger.setImageSize(424, 512);
+    _mymerger.setImageSize(240, 320);
 
 }
 
@@ -290,37 +297,108 @@ void NICPTrackerApp::setStartingPose(const Eigen::Isometry3f startingPose){
 }
 
 double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& depthFilename, const std::string &rgbFileName) {
-    // Generate new current cloud
-    _tBegin = get_time();
-    _rawDepth = imread(depthFilename, -1);
-    _rgbImage = imread(rgbFileName, 1);
-    cvtColor(_rgbImage, _rgbImage, CV_BGR2RGB);
-//    Mat element = getStructuringElement(MORPH_RECT, Size(5,5));
-//    medianBlur(_rawDepth, _rawDepth, 5);
-//    erode(_rawDepth, _rawDepth, element);
 
+    _tBegin = get_time();
+
+    //************ Reading image files **************
+    _rawDepth = imread(depthFilename, -1);
     if(!_rawDepth.data) {
         std::cerr << "Error: impossible to read image file " << depthFilename << std::endl;
         exit(-1);
     }
-    if(_imageScaling > 1) {
-        DepthImage_convert_16UC1_to_32FC1(_depth, _rawDepth, _depthScaling);
-        DepthImage_scale(_scaledDepth, _depth, _imageScaling);
-    }
-    else {
-        DepthImage_convert_16UC1_to_32FC1(_scaledDepth, _rawDepth, _depthScaling);
-    }
-    _scaledIndeces.create(_scaledDepth.rows, _scaledDepth.cols);
-    //        _converter.compute(*_currentCloud, _scaledDepth, Eigen::Isometry3f::Identity());
+    _rgbImage = imread(rgbFileName, 1);
+    Mat depthDisplay;
+    _rawDepth.convertTo(depthDisplay, CV_8U, 0.5);
+    viewDepth->showImage(depthDisplay);
+    GaussianBlur(_rgbImage, _rgbImage, Size(3,3), 1);
+    cvtColor(_rgbImage, _rgbImage, CV_BGR2RGB);
+
+    DepthImage_convert_16UC1_to_32FC1(_scaledDepth, _rawDepth, _depthScaling);
+
+    //************ Unprojection of depth **************
     _converter.compute(*_currentCloud, _scaledDepth, _rgbImage);
     _tEnd = get_time();
     _tInput = _tEnd - _tBegin;
 
-    //        if(_viewer) { _viewer->updateReferenceScene(_referenceScene, _globalT, true); }
+    //********** Refresh point cloud on the screen ************
+
+    //    if(_viewer) { _viewer->updateReferenceScene(_referenceScene, _globalT, true); }
     if(_viewer) { _viewer->updateReferenceScene(_finalCloud, _globalT, true); }
 
-    // Align the new cloud
-//        _aligner.setInitialGuess(Eigen::Isometry3f::Identity());
+    //********** Trying to find an initial guess based on texture information **********
+
+    Mat edges;
+    //    Canny(_rgbImage, edges, 40, 120);
+    //    viewProjection->showImage();
+
+    pnp.reset_correspondences();
+    cerr << "AQUI\n";
+    pnp.set_maximum_number_of_correspondences(50);
+//    int cont = 0;
+
+    double R_est[3][3], t_est[3];
+
+    if(_seq < 1){
+        cvtColor(_rgbImage, imgPrev, COLOR_RGB2GRAY);
+        goodFeaturesToTrack(imgPrev, points1, 100, 0.01, 5);
+    }
+    else{
+        cvtColor(_rgbImage, imgActual, COLOR_RGB2GRAY);
+
+        if(points1.size() < 50){
+            points2 = points1;
+            goodFeaturesToTrack(imgPrev, points1, 100, 0.01, 10);
+            points2.insert(points2.end(), points1.begin(), points1.end());
+        }
+
+        calcOpticalFlowPyrLK(imgPrev, imgActual, points1, points2, statusFeatures, featuresErrors);
+
+        int indexCorrection = 0;
+
+        for(int i = 0; i < statusFeatures.size(); i++){
+            Point2f pt1 = points1.at(i - indexCorrection);
+            Point2f pt2 = points2.at(i - indexCorrection);
+            float ptdx = pt2.x - pt1.x;
+            float ptdy = pt2.y - pt1.y;
+            float dist = sqrt(ptdx*ptdx + ptdy*ptdy);
+            if(statusFeatures.at(i) == 0 || (pt2.x < 60) || (pt2.y < 60) ||
+                    pt2.x > 320-60 || pt2.y > 240 - 60 || dist > 5){
+                if(pt2.x < 60 || pt2.y < 60 || pt2.x > 320 - 60 || pt2.y > 240 - 60)
+                    statusFeatures.at(i) = 0;
+                points1.erase(points1.begin() + (i - indexCorrection));
+                points2.erase(points2.begin() + (i - indexCorrection));
+                indexCorrection++;
+            }
+        }
+
+        for (int i = 0; i < points1.size() && i < 50; ++i) {
+            circle(_rgbImage, points1[i], 1, Scalar(0,255,0));
+            viewRGB->showImage(_rgbImage);
+
+            nicp::Point point;
+            PinholePointProjector *pp = dynamic_cast<PinholePointProjector*>(_converter.projector());
+            float depth = _scaledDepth.at<float>(points1[i].y, points1[i].x);
+            pp->unProject(point, points1[i].x, points1[i].y, depth);
+            pnp.add_correspondence(point[0], point[1], point[2], points1[i].x, points1[i].y);
+        }
+        imgPrev = imgActual.clone();
+        points1 = points2;
+
+        pnp.compute_pose(R_est, t_est);
+        pnp.print_pose(R_est, t_est);
+        cerr << "-------------\n";
+    }
+
+
+    //********** Align the new cloud ***********
+    Eigen::Isometry3f init = Eigen::Isometry3f::Identity();
+    init.matrix().row(3) << 0.0f, 0.0f, 0.0f, 1.0f;
+    if(_seq > 0){
+        init.matrix().row(0) << R_est[0][0], R_est[0][1], R_est[0][2], t_est[0];
+        init.matrix().row(1) << R_est[1][0], R_est[1][1], R_est[1][2], t_est[1];
+        init.matrix().row(2) << R_est[2][0], R_est[2][1], R_est[2][2], t_est[2];
+    }
+//    _aligner.setInitialGuess(init);
     _aligner.setInitialGuess(deltaT);
     _aligner.setReferenceCloud(_referenceScene);
     _aligner.setCurrentCloud(_currentCloud);
@@ -332,6 +410,7 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     // Update structures
     _tBegin = get_time();
     _deltaT = _aligner.T();
+
     _localT = _localT * _deltaT;
     _globalT = _globalT * _deltaT;
     deltaT = _deltaT;
@@ -340,11 +419,8 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     E.diagonal().array() -= 1;
     _globalT.linear() -= 0.5 * R * E;
 
-    _converter.projector()->project(_referenceScaledIndeces, _referenceScaledDepth, _referenceScene->points());
-    //    compareDepths(_inDistance, _inNum, _outDistance, _outNum,
-    //                  _referenceScaledDepth, _referenceScaledIndeces,
-    //                  _scaledDepth, _scaledIndeces,
-    //                  0.05f, false);
+    cerr << init.matrix() << endl;
+    cerr << _globalT.matrix() << endl;
 
     //Look for a strange movement of camera and reset ICP
     //    Eigen::AngleAxisf aa(_localT.linear());
@@ -356,20 +432,17 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     //        if(_viewer) { _viewer->resetReferenceScene(); }
     //    }
 
-    //
     _referenceScene->add(*_currentCloud, _deltaT);
     _referenceScene->transformInPlace(_deltaT.inverse());
     _merger.merge(_referenceScene);
-    //    _merger.voxelize(_referenceScene, 0.005f);
 
     _finalCloud->add(*_currentCloud, _deltaT);
     _finalCloud->transformInPlace(_deltaT.inverse());
     _mymerger.mergeFinal(_finalCloud);
-    //    cerr << "-------\n";
-    //    cerr << _finalCloud->points().size() << endl;
-    //    _mymerger.voxelize(_finalCloud, 0.004f);
-    //    cerr << _finalCloud->points().size() << endl;
-    //    _mymerger.mergeFinal(_finalCloud);
+
+    _mymerger.mergeFinal(_finalCloud, _currentCloud);
+    _mymerger._depthImage1.convertTo(depthDisplay, CV_8U, 10);
+    //    viewProjection->showImage(depthDisplay);
 
     count++;
     _seq++;
@@ -377,9 +450,7 @@ double NICPTrackerApp::spinOnce(Eigen::Isometry3f& deltaT, const std::string& de
     _tUpdate = _tEnd - _tBegin;
     //    std::cout << "[INFO]: inlier ratio " << (float)_inNum / (float)(_inNum + _outNum) << std::endl;
 
-    if(_viewer) {
-        _viewer->updateCurrentCloud(_currentCloud, _globalT * _deltaT.inverse());
-    }
+    _viewer->updateCurrentCloud(_currentCloud, _globalT * _deltaT.inverse());
 
     //    std::cout << "[INFO]: timings [input: " << _tInput << "] "
     //              << "[align: " << _tAlign << "] "
